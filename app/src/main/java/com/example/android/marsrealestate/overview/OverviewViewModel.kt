@@ -39,9 +39,8 @@ class OverviewViewModel : ViewModel() {
     val response: LiveData<String>
         get() = _response
 
-    private val _status = MutableLiveData<String>()
-
-    val status: LiveData<String>
+    private val _status = MutableLiveData<MarsApiStatus>()
+    val status: LiveData<MarsApiStatus>
         get() = _status
 
     private val _property = MutableLiveData<List<MarsProperty>>()
@@ -52,9 +51,8 @@ class OverviewViewModel : ViewModel() {
     private var viewModelJob = Job()
     private val coroutineScope = CoroutineScope(viewModelJob + Dispatchers.Main )
 
-    /**
-     * Call getMarsRealEstateProperties() on init so we can display status immediately.
-     */
+    enum class MarsApiStatus { LOADING, ERROR, DONE }
+
     init {
         getMarsRealEstateProperties()
     }
@@ -76,12 +74,13 @@ class OverviewViewModel : ViewModel() {
         coroutineScope.launch {
             var getPropertiesDeferred = MarsApi.retrofitService.getProperties()
             try{
+                _status.value = MarsApiStatus.LOADING
                 var listResult = getPropertiesDeferred.await()
-                if (listResult.isNotEmpty()) {
-                    _property.value = listResult
-                }
+                _status.value = MarsApiStatus.DONE
+                _property.value = listResult
             } catch(e: Exception){
-                _status.value = "Failure: ${e.message}"
+                _status.value = MarsApiStatus.ERROR
+                _property.value = ArrayList()
             }
         }
     }
